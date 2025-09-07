@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dual Camera Monitor System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f3f0 0%, #e8e3de 100%);
+            color: #2e2e2e;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #d4a574 0%, #c19653 100%);
+            color: white;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .header .subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-top: 8px;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 24px;
+            padding: 24px;
+        }
+
+        .video-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .video-container {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+            background: #f8f8f8;
+        }
+
+        .video-container.ptz {
+            border: 3px solid #d4a574;
+        }
+
+        .video-container.fixed {
+            border: 3px solid #95a5a6;
+        }
+
+        .video-stream {
+            width: 100%;
+            height: auto;
+            min-height: 300px;
+            display: block;
+            background: #000;
+        }
+
+        .video-overlay {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-family: monospace;
+        }
+
+        .video-label {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(212, 165, 116, 0.9);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .video-label.fixed {
+            background: rgba(149, 165, 166, 0.9);
+        }
+
+        .controls-panel {
+            min-width: 320px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            height: fit-content;
+        }
+
+        .control-section {
+            margin-bottom: 32px;
+        }
+
+        .control-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-section h3 {
+            color: #c19653;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #d4a574;
+        }
+
+        .video-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(145deg, #ffffff, #f0f0f0);
+            border: 2px solid #d4a574;
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .refresh-btn:hover {
+            background: linear-gradient(145deg, #d4a574, #c19653);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .ptz-notice {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid #e74c3c;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: #c0392b;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .ptz-controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .ptz-btn {
+            background: linear-gradient(145deg, #ffffff, #f0f0f0);
+            border: 2px solid #d4a574;
+            border-radius: 12px;
+            padding: 16px 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 60px;
+            user-select: none;
+        }
+
+        .ptz-btn:hover {
+            background: linear-gradient(145deg, #d4a574, #c19653);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(196, 150, 83, 0.3);
+        }
+
+        .ptz-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(196, 150, 83, 0.2);
+        }
+
+        .ptz-btn.center {
+            background: linear-gradient(145deg, #e74c3c, #c0392b);
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .ptz-btn.center:hover {
+            background: linear-gradient(145deg, #c0392b, #a93226);
+        }
+
+        .status-section {
+            padding: 16px;
+            background: rgba(212, 165, 116, 0.1);
+            border-radius: 8px;
+            border-left: 4px solid #d4a574;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .status-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-online {
+            background: #27ae60;
+            box-shadow: 0 0 8px rgba(39, 174, 96, 0.5);
+        }
+
+        .status-offline {
+            background: #e74c3c;
+            box-shadow: 0 0 8px rgba(231, 76, 60, 0.5);
+        }
+
+        .auto-refresh-info {
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            margin-top: 16px;
+            padding: 12px;
+            background: rgba(212, 165, 116, 0.05);
+            border-radius: 8px;
+            border: 1px dashed #d4a574;
+        }
+
+        .refresh-animation {
+            animation: refreshPulse 2s infinite;
+        }
+
+        @keyframes refreshPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .video-section {
+                order: 1;
+            }
+            
+            .controls-panel {
+                order: 2;
+                min-width: auto;
+            }
+            
+            .ptz-controls {
+                gap: 12px;
+            }
+            
+            .ptz-btn {
+                min-height: 50px;
+                font-size: 18px;
+            }
+            
+            .video-stream {
+                min-height: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎥 Dual Camera Monitor System</h1>
+            <div class="subtitle">Example of Tapo C246D</div>
+        </div>
+        
+        <div class="main-content">
+            <div class="video-section">
+                <!-- PTZ Camera (Top) -->
+                <div class="video-container ptz">
+                    <img src="/video_feed" 
+                         alt="PTZ Video Stream" 
+                         class="video-stream" 
+                         id="videoStreamPTZ"
+                         onerror="this.src='/static/placeholder.jpg'; this.onerror=null;">
+                    <div class="video-label">🎮 PTZ Control Camera</div>
+                    <div class="video-overlay" id="videoOverlayPTZ">
+                        Loading...
+                    </div>
+                </div>
+                
+                <!-- Fixed Camera (Bottom) -->
+                <div class="video-container fixed">
+                    <img src="/video_feed_fixed" 
+                         alt="Fixed Video Stream" 
+                         class="video-stream" 
+                         id="videoStreamFixed"
+                         onerror="this.src='/static/placeholder.jpg'; this.onerror=null;">
+                    <div class="video-label fixed">📹 Fixed View Camera</div>
+                    <div class="video-overlay" id="videoOverlayFixed">
+                        Loading...
+                    </div>
+                </div>
+            </div>
+            
+            <div class="controls-panel">
+                <!-- PTZ Controls (Moved to top) -->
+                <div class="control-section">
+                    <h3>🎮 PTZ Control</h3>
+                    <div class="ptz-notice">
+                        ⚠️ Only applies to top PTZ camera
+                    </div>
+                    <div class="ptz-controls">
+                        <button class="ptz-btn" onclick="movePTZ('upleft')">↖</button>
+                        <button class="ptz-btn" onclick="movePTZ('up')">⬆</button>
+                        <button class="ptz-btn" onclick="movePTZ('upright')">↗</button>
+                        
+                        <button class="ptz-btn" onclick="movePTZ('left')">⬅</button>
+                        <button class="ptz-btn center" onclick="stopPTZ()">STOP</button>
+                        <button class="ptz-btn" onclick="movePTZ('right')">➡</button>
+                        
+                        <button class="ptz-btn" onclick="movePTZ('downleft')">↙</button>
+                        <button class="ptz-btn" onclick="movePTZ('down')">⬇</button>
+                        <button class="ptz-btn" onclick="movePTZ('downright')">↘</button>
+                    </div>
+                </div>
+                
+                <!-- Stream Controls (Moved to second position) -->
+                <div class="control-section">
+                    <h3>🔄 Stream Control</h3>
+                    <div class="video-controls">
+                        <button class="refresh-btn" onclick="manualRefresh('ptz')">
+                            🔄 Refresh PTZ Feed
+                        </button>
+                        <button class="refresh-btn" onclick="manualRefresh('fixed')">
+                            🔄 Refresh Fixed Feed
+                        </button>
+                        <button class="refresh-btn" onclick="manualRefresh('all')">
+                            🔄 Refresh All Feeds
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="control-section">
+                    <h3>📊 System Status</h3>
+                    <div class="status-section">
+                        <div class="status-item">
+                            <span>ONVIF Connection</span>
+                            <span class="status-indicator status-offline" id="onvifStatus"></span>
+                        </div>
+                        <div class="status-item">
+                            <span>PTZ Stream</span>
+                            <span class="status-indicator status-offline" id="ptzStreamStatus"></span>
+                        </div>
+                        <div class="status-item">
+                            <span>Fixed Stream</span>
+                            <span class="status-indicator status-offline" id="fixedStreamStatus"></span>
+                        </div>
+                        <div class="status-item">
+                            <span>PTZ Updated</span>
+                            <span id="lastUpdatePTZ">--:--:--</span>
+                        </div>
+                        <div class="status-item">
+                            <span>Fixed Updated</span>
+                            <span id="lastUpdateFixed">--:--:--</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="auto-refresh-info">
+                    <strong>⏱️ Auto Refresh</strong><br>
+                    Automatically refreshes all video streams every 60 seconds<br>
+                    Next refresh in <span id="refreshCountdown">60</span> seconds
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let refreshTimer;
+        let countdownTimer;
+        let countdownSeconds = 60;
+
+        // PTZ control functions
+        function movePTZ(direction) {
+            fetch('/ptz_control', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ direction: direction })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    console.error('PTZ control failed:', direction);
+                    alert('PTZ control failed, please check connection status');
+                }
+            })
+            .catch(error => {
+                console.error('PTZ control error:', error);
+                alert('PTZ control error occurred');
+            });
+        }
+
+        function stopPTZ() {
+            movePTZ('stop');
+        }
+
+        // Manual refresh
+        function manualRefresh(streamType = 'all') {
+            console.log('Manual refresh video stream:', streamType);
+            
+            fetch('/restart_stream', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ stream: streamType })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Stream restart successful:', data.message);
+                    // Delayed refresh of video
+                    setTimeout(() => {
+                        if (streamType === 'ptz' || streamType === 'all') {
+                            refreshVideoStream('ptz');
+                        }
+                        if (streamType === 'fixed' || streamType === 'all') {
+                            refreshVideoStream('fixed');
+                        }
+                    }, 2000);
+                } else {
+                    console.error('Stream restart failed:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Manual refresh error:', error);
+            });
+        }
+
+        // Update system status
+        function updateStatus() {
+            fetch('/status')
+            .then(response => response.json())
+            .then(data => {
+                // Update connection status indicators
+                const onvifStatus = document.getElementById('onvifStatus');
+                const ptzStreamStatus = document.getElementById('ptzStreamStatus');
+                const fixedStreamStatus = document.getElementById('fixedStreamStatus');
+                
+                onvifStatus.className = 'status-indicator ' + 
+                    (data.onvif_connected ? 'status-online' : 'status-offline');
+                ptzStreamStatus.className = 'status-indicator ' + 
+                    (data.ptz_stream_active ? 'status-online' : 'status-offline');
+                fixedStreamStatus.className = 'status-indicator ' + 
+                    (data.fixed_stream_active ? 'status-online' : 'status-offline');
+                
+                // Update last update times
+                if (data.last_frame_time_ptz > 0) {
+                    const lastUpdatePTZ = new Date(data.last_frame_time_ptz * 1000);
+                    document.getElementById('lastUpdatePTZ').textContent = 
+                        lastUpdatePTZ.toLocaleTimeString();
+                }
+                
+                if (data.last_frame_time_fixed > 0) {
+                    const lastUpdateFixed = new Date(data.last_frame_time_fixed * 1000);
+                    document.getElementById('lastUpdateFixed').textContent = 
+                        lastUpdateFixed.toLocaleTimeString();
+                }
+                
+                // Update video overlay information
+                const overlayPTZ = document.getElementById('videoOverlayPTZ');
+                const overlayFixed = document.getElementById('videoOverlayFixed');
+                
+                if (data.ptz_stream_active) {
+                    overlayPTZ.textContent = '● PTZ Live Stream';
+                    overlayPTZ.style.background = 'rgba(39, 174, 96, 0.8)';
+                } else {
+                    overlayPTZ.textContent = '● PTZ Stream Interrupted';
+                    overlayPTZ.style.background = 'rgba(231, 76, 60, 0.8)';
+                }
+                
+                if (data.fixed_stream_active) {
+                    overlayFixed.textContent = '● Fixed Stream';
+                    overlayFixed.style.background = 'rgba(39, 174, 96, 0.8)';
+                } else {
+                    overlayFixed.textContent = '● Fixed Stream Interrupted';
+                    overlayFixed.style.background = 'rgba(231, 76, 60, 0.8)';
+                }
+            })
+            .catch(error => {
+                console.error('Status update error:', error);
+            });
+        }
+
+        // Improved video refresh function
+        function refreshVideoStream(streamType = 'all') {
+            const timestamp = Date.now();
+            
+            if (streamType === 'ptz' || streamType === 'all') {
+                const videoStreamPTZ = document.getElementById('videoStreamPTZ');
+                const overlayPTZ = document.getElementById('videoOverlayPTZ');
+                
+                overlayPTZ.textContent = '● Reloading...';
+                overlayPTZ.style.background = 'rgba(255, 193, 7, 0.8)';
+                
+                videoStreamPTZ.src = `/video_feed?t=${timestamp}`;
+                
+                videoStreamPTZ.onload = function() {
+                    console.log('PTZ video stream refresh complete');
+                };
+                
+                videoStreamPTZ.onerror = function() {
+                    console.error('PTZ video stream loading failed');
+                    overlayPTZ.textContent = '● PTZ Loading Failed';
+                    overlayPTZ.style.background = 'rgba(231, 76, 60, 0.8)';
+                };
+                
+                videoStreamPTZ.classList.add('refresh-animation');
+                setTimeout(() => {
+                    videoStreamPTZ.classList.remove('refresh-animation');
+                }, 2000);
+            }
+            
+            if (streamType === 'fixed' || streamType === 'all') {
+                const videoStreamFixed = document.getElementById('videoStreamFixed');
+                const overlayFixed = document.getElementById('videoOverlayFixed');
+                
+                overlayFixed.textContent = '● Reloading...';
+                overlayFixed.style.background = 'rgba(255, 193, 7, 0.8)';
+                
+                videoStreamFixed.src = `/video_feed_fixed?t=${timestamp}`;
+                
+                videoStreamFixed.onload = function() {
+                    console.log('Fixed video stream refresh complete');
+                };
+                
+                videoStreamFixed.onerror = function() {
+                    console.error('Fixed video stream loading failed');
+                    overlayFixed.textContent = '● Fixed Loading Failed';
+                    overlayFixed.style.background = 'rgba(231, 76, 60, 0.8)';
+                };
+                
+                videoStreamFixed.classList.add('refresh-animation');
+                setTimeout(() => {
+                    videoStreamFixed.classList.remove('refresh-animation');
+                }, 2000);
+            }
+            
+            console.log('Video stream refreshed:', streamType, timestamp);
+        }
+
+        // Countdown timer update
+        function updateCountdown() {
+            document.getElementById('refreshCountdown').textContent = countdownSeconds;
+            countdownSeconds--;
+            
+            if (countdownSeconds < 0) {
+                countdownSeconds = 60;
+                refreshVideoStream('all');
+            }
+        }
+
+        // Initialize
+        function initialize() {
+            // Immediately update status once
+            updateStatus();
+            
+            // Set periodic status updates (every 5 seconds)
+            setInterval(updateStatus, 5000);
+            
+            // Set 60-second auto refresh for video
+            refreshTimer = setInterval(() => refreshVideoStream('all'), 60000);
+            
+            // Set countdown timer (update every second)
+            countdownTimer = setInterval(updateCountdown, 1000);
+            
+            console.log('Dual camera monitor system initialized');
+        }
+
+        // Initialize after page load
+        document.addEventListener('DOMContentLoaded', initialize);
+
+        // Page visibility change handling (pause/resume when switching tabs)
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                // Pause auto refresh when page is hidden
+                clearInterval(refreshTimer);
+                clearInterval(countdownTimer);
+            } else {
+                // Resume auto refresh when page is visible
+                refreshTimer = setInterval(() => refreshVideoStream('all'), 60000);
+                countdownTimer = setInterval(updateCountdown, 1000);
+                countdownSeconds = 60; // Reset countdown
+                updateStatus(); // Immediately update status
+            }
+        });
+    </script>
+</body>
+</html>
