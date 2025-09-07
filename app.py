@@ -39,7 +39,7 @@ class CameraController:
         self.camera_ip = self.config.get('camera', 'ip', fallback='192.168.55.98')
         self.camera_port = self.config.getint('camera', 'onvif_port', fallback=2020)
         self.username = self.config.get('camera', 'username', fallback='steel540')
-        self.password = self.config.get('camera', 'password', fallback='12345678')
+        self.password = self.config.get('camera', 'password', fallback='11111')
         
         # Dual camera stream settings
         self.rtsp_stream2 = self.config.get('camera', 'rtsp_stream2', 
