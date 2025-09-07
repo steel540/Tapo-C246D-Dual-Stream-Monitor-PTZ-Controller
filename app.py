@@ -38,8 +38,8 @@ class CameraController:
         # Read settings from config file
         self.camera_ip = self.config.get('camera', 'ip', fallback='192.168.55.98')
         self.camera_port = self.config.getint('camera', 'onvif_port', fallback=2020)
-        self.username = self.config.get('camera', 'username', fallback='steel540')
-        self.password = self.config.get('camera', 'password', fallback='11111')
+        self.username = self.config.get('camera', 'username', fallback='abc')
+        self.password = self.config.get('camera', 'password', fallback='1111')
         
         # Dual camera stream settings
         self.rtsp_stream2 = self.config.get('camera', 'rtsp_stream2', 
@@ -569,10 +569,10 @@ if __name__ == '__main__':
         config['camera'] = {
             'ip': '192.168.55.98',
             'onvif_port': '2020',
-            'username': 'steel540',
-            'password': '12345678',
-            'rtsp_stream2': 'rtsp://steel540:12345678@192.168.55.98:554/stream2',
-            'rtsp_stream6': 'rtsp://steel540:12345678@192.168.55.98:554/stream6'
+            'username': 'abc',
+            'password': '1111',
+            'rtsp_stream2': 'rtsp://abc:1111@192.168.55.98:554/stream2',
+            'rtsp_stream6': 'rtsp://abc:1111@192.168.55.98:554/stream6'
         }
         config['ptz'] = {
             'speed': '0.4',
