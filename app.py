@@ -35,21 +35,25 @@ class CameraController:
         self.config = configparser.ConfigParser()
         self.config.read(config_file, encoding='utf-8')
         
-        # Read settings from config file
-        self.camera_ip = self.config.get('camera', 'ip', fallback='192.168.55.98')
+        # Read camera settings from config file
+        self.camera_ip = self.config.get('camera', 'ip', fallback='192.168.5.123')
         self.camera_port = self.config.getint('camera', 'onvif_port', fallback=2020)
         self.username = self.config.get('camera', 'username', fallback='abc')
-        self.password = self.config.get('camera', 'password', fallback='1111')
+        self.password = self.config.get('camera', 'password', fallback='123')
         
-        # Dual camera stream settings
+        # Dual camera stream settings from config
         self.rtsp_stream2 = self.config.get('camera', 'rtsp_stream2', 
                                            fallback=f'rtsp://{self.username}:{self.password}@{self.camera_ip}:554/stream2')
         self.rtsp_stream6 = self.config.get('camera', 'rtsp_stream6', 
                                            fallback=f'rtsp://{self.username}:{self.password}@{self.camera_ip}:554/stream6')
         
-        # PTZ settings
+        # PTZ settings from config
         self.ptz_speed = self.config.getfloat('ptz', 'speed', fallback=0.4)
         self.ptz_duration = self.config.getfloat('ptz', 'duration', fallback=0.5)
+        
+        # Video settings from config
+        self.jpeg_quality = self.config.getint('video', 'jpeg_quality', fallback=80)
+        self.buffer_size = self.config.getint('video', 'buffer_size', fallback=1)
         
         logger.info(f"Configuration loaded:")
         logger.info(f"  Camera IP: {self.camera_ip}")
@@ -57,6 +61,8 @@ class CameraController:
         logger.info(f"  Username: {self.username}")
         logger.info(f"  PTZ Speed: {self.ptz_speed}")
         logger.info(f"  PTZ Duration: {self.ptz_duration}")
+        logger.info(f"  JPEG Quality: {self.jpeg_quality}")
+        logger.info(f"  Buffer Size: {self.buffer_size}")
         logger.info(f"  Stream2 URL: {self.rtsp_stream2}")
         logger.info(f"  Stream6 URL: {self.rtsp_stream6}")
         
@@ -179,8 +185,8 @@ class CameraController:
                 logger.info(f"Attempting to connect PTZ video stream: {self.rtsp_stream6}")
                 self.cap_ptz = cv2.VideoCapture(self.rtsp_stream6)
                 
-                # Set stream parameters
-                self.cap_ptz.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                # Set stream parameters using config values
+                self.cap_ptz.set(cv2.CAP_PROP_BUFFERSIZE, self.buffer_size)
                 self.cap_ptz.set(cv2.CAP_PROP_FPS, 15)
                 
                 # Test if reading is possible
@@ -240,8 +246,8 @@ class CameraController:
                 logger.info(f"Attempting to connect fixed video stream: {self.rtsp_stream2}")
                 self.cap_fixed = cv2.VideoCapture(self.rtsp_stream2)
                 
-                # Set stream parameters
-                self.cap_fixed.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                # Set stream parameters using config values
+                self.cap_fixed.set(cv2.CAP_PROP_BUFFERSIZE, self.buffer_size)
                 self.cap_fixed.set(cv2.CAP_PROP_FPS, 15)
                 
                 # Test if reading is possible
@@ -329,7 +335,7 @@ class CameraController:
         """Get current PTZ frame"""
         if self.frame_ptz is not None:
             ret, buffer = cv2.imencode('.jpg', self.frame_ptz, 
-                                     [cv2.IMWRITE_JPEG_QUALITY, 80])
+                                     [cv2.IMWRITE_JPEG_QUALITY, self.jpeg_quality])
             if ret:
                 return buffer.tobytes()
         return None
@@ -338,7 +344,7 @@ class CameraController:
         """Get current fixed frame"""
         if self.frame_fixed is not None:
             ret, buffer = cv2.imencode('.jpg', self.frame_fixed, 
-                                     [cv2.IMWRITE_JPEG_QUALITY, 80])
+                                     [cv2.IMWRITE_JPEG_QUALITY, self.jpeg_quality])
             if ret:
                 return buffer.tobytes()
         return None
@@ -452,8 +458,39 @@ class CameraController:
             logger.error(f"Full error traceback: {traceback.format_exc()}")
             return False
 
+def create_default_config():
+    """Create default configuration file if it doesn't exist"""
+    config = configparser.ConfigParser()
+    config['camera'] = {
+        'ip': '192.168.5.123',
+        'onvif_port': '2020',
+        'username': 'abc',
+        'password': '123',
+        'rtsp_stream2': 'rtsp://abc:123@192.168.5.123:554/stream2',
+        'rtsp_stream6': 'rtsp://abc:123@192.168.5.123:554/stream6'
+    }
+    config['ptz'] = {
+        'speed': '0.4',
+        'duration': '0.5'
+    }
+    config['server'] = {
+        'host': '0.0.0.0',
+        'port': '5000',
+        'debug': 'false'
+    }
+    config['video'] = {
+        'jpeg_quality': '80',
+        'buffer_size': '1',
+        'auto_refresh_interval': '60'
+    }
+    
+    with open('config.ini', 'w', encoding='utf-8') as f:
+        config.write(f)
+    
+    return config
+
 # Global camera controller
-camera_controller = CameraController()
+camera_controller = None
 
 @app.route('/')
 def index():
@@ -565,38 +602,25 @@ if __name__ == '__main__':
     # Create config file if it doesn't exist
     if not os.path.exists('config.ini'):
         logger.info("Creating default configuration file...")
-        config = configparser.ConfigParser()
-        config['camera'] = {
-            'ip': '192.168.55.98',
-            'onvif_port': '2020',
-            'username': 'abc',
-            'password': '1111',
-            'rtsp_stream2': 'rtsp://abc:1111@192.168.55.98:554/stream2',
-            'rtsp_stream6': 'rtsp://abc:1111@192.168.55.98:554/stream6'
-        }
-        config['ptz'] = {
-            'speed': '0.4',
-            'duration': '0.5'
-        }
-        config['server'] = {
-            'host': '0.0.0.0',
-            'port': '5000',
-            'debug': 'false'
-        }
-        
-        with open('config.ini', 'w', encoding='utf-8') as f:
-            config.write(f)
+        config = create_default_config()
         logger.info("Default configuration file config.ini created")
+    else:
+        # Read existing configuration
+        config = configparser.ConfigParser()
+        config.read('config.ini', encoding='utf-8')
     
-    # Read server configuration
-    config = configparser.ConfigParser()
-    config.read('config.ini', encoding='utf-8')
+    # Initialize camera controller with config
+    camera_controller = CameraController()
     
+    # Read server configuration from config file
     host = config.get('server', 'host', fallback='0.0.0.0')
     port = config.getint('server', 'port', fallback=5000)
     debug = config.getboolean('server', 'debug', fallback=False)
     
-    logger.info(f"Server configuration: host={host}, port={port}, debug={debug}")
+    logger.info(f"Server configuration loaded from config.ini:")
+    logger.info(f"  Host: {host}")
+    logger.info(f"  Port: {port}")
+    logger.info(f"  Debug: {debug}")
     logger.info(f"Server starting: http://{host}:{port}")
     logger.info("Debug logs will be saved to camera_debug.log")
     logger.info("=== Application Startup Complete ===")
